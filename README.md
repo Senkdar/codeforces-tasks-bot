@@ -1,4 +1,4 @@
-# Codeforces-tasks-bot
+# Codeforces tasks bot
 Парсер задач с сайта https://codeforces.com/problemset и телеграм бот, присылающий выборку задач по указанным параметрам
 
 
@@ -6,9 +6,9 @@
 Клонировать репозиторий и перейти в него в командной строке:
 
 ```bash
-  git clone https://github.com/Senkdar/api_yamdb
+  git clone https://github.com/Senkdar/Codeforces-tasks-bot
   
-  cd api_yamdb
+  cd Codeforces-tasks-bot
 ```
  
 Cоздать и активировать виртуальное окружение:
