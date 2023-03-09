@@ -48,6 +48,17 @@ difficulty_button = {
 }
 
 
+def create_selected_task_table():
+    """Создание таблицы использованных задач в базе данных."""
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS selected_tasks (
+        id PRIMARY KEY,
+        category TEXT,
+        task_name TEXT
+    );
+    ''')
+
+
 def get_tasks_by_category_and_difficulty(category: str, difficulty: int) -> list:
     """Функция для получения задач по категории и сложности."""
     cur.execute("""

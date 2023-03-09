@@ -16,13 +16,13 @@ load_dotenv()
 RETRY_TIME = 3600
 
 
-def create_db():
+def create__task_table():
     """Создание таблицы в базе данных."""
     cur.execute('''
     CREATE TABLE IF NOT EXISTS tasks(
         number TEXT,
         name TEXT,
-        category TEXT,
+        category TEXT[],
         difficulty INTEGER,
         resolved TEXT,
         link TEXT
@@ -37,23 +37,28 @@ def parse_page(url: str) -> None:
     page = requests.get(url).content
     soup = BeautifulSoup(page, 'html.parser')
     tasks = soup.find_all('tr')
+    c = 0
 
     for task in tasks:
         if task.find('td') is None:
             continue
         raw_data = task.get_text(strip=True, separator='|')
         data = raw_data.split('|')
-        task_id = data[0]
-        task_name = data[1]
-        task_catagory = data[2]
-        task_resolved = data[-1]
+        print(data)
+        task_id = data.pop(0)
+        task_name = data.pop(0)
+        task_resolved = data.pop(-1)
         # не у всех задач есть сложность
         # если её нет - пропускаем задачу
         try:
-            task_difficulty = int(data[-2])
+            task_difficulty = int(data.pop(-1))
         except BaseException:
             continue
+        if len(data) > 1:
+            data.remove(',')
+        task_category = data
         link = 'https://codeforces.com/' + task.find('a').get('href')
+        print(task_category)
 
         cur.execute('''SELECT *
                     FROM tasks
@@ -63,7 +68,7 @@ def parse_page(url: str) -> None:
         if not result:
             cur.execute('''INSERT INTO tasks
                         VALUES(%s, %s, %s, %s, %s, %s);''',
-                        (task_id, task_name, task_catagory,
+                        (task_id, task_name, task_category,
                             task_difficulty, task_resolved, link))
         else:
             cur.execute(
@@ -72,6 +77,9 @@ def parse_page(url: str) -> None:
                 (task_resolved, task_name)
             )
         connection.commit()
+        c+=1
+        if c>4:
+            break
 
 
 def parse_all_pages() -> None:
@@ -97,8 +105,9 @@ if __name__ == '__main__':
     except (Exception, psycopg2.Error) as error:
         logging.error('Ошибка при подключении к PostgreSQL', error)
 
-    create_db()
-    while True:
-        parse_all_pages()
-        logging.info('Остановка программы на 1 час')
-        time.sleep(RETRY_TIME)
+    create__task_table()
+    # while True:
+    #     parse_all_pages()
+    #     logging.info('Остановка программы на 1 час')
+    #     time.sleep(RETRY_TIME)
+    parse_page('https://codeforces.com/problemset/page/1?order=BY_SOLVED_DESC')
