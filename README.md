@@ -6,9 +6,9 @@
 Клонировать репозиторий и перейти в него в командной строке:
 
 ```bash
-  git clone https://github.com/Senkdar/Codeforces-tasks-bot
+  git clone https://github.com/Senkdar/codeforces-tasks-bot
   
-  cd Codeforces-tasks-bot
+  cd codeforces-tasks-bot
 ```
  
 Cоздать и активировать виртуальное окружение:
