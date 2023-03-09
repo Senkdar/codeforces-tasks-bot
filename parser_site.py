@@ -11,6 +11,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+
 load_dotenv()
 RETRY_TIME = 3600
 
