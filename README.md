@@ -1,14 +1,14 @@
 # Codeforces tasks bot
-Парсер задач с сайта https://codeforces.com/problemset и телеграм бот, присылающий выборку задач по указанным параметрам.
+Парсер задач с архива сайта https://codeforces.com и телеграм бот, присылающий выборку задач по указанным параметрам категории и сложности.
 
 
 ## Как запустить проект (для Windows):
 Клонировать репозиторий и перейти в него в командной строке:
 
 ```bash
-  git clone https://github.com/Senkdar/Codeforces-tasks-bot
+  git clone https://github.com/Senkdar/codeforces-tasks-bot
   
-  cd Codeforces-tasks-bot
+  cd codeforces-tasks-bot
 ```
  
 Cоздать и активировать виртуальное окружение:
