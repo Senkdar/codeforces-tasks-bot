@@ -50,13 +50,63 @@ difficulty_button = {
 
 def create_selected_task_table():
     """Создание таблицы использованных задач в базе данных."""
+    # cur.execute('DROP TABLE selected_tasks')
     cur.execute('''
-    CREATE TABLE IF NOT EXISTS selected_tasks (
-        id PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS selected_tasks(
+        name TEXT,
         category TEXT,
-        task_name TEXT
+        difficulty INTEGER,
+        link TEXT
     );
     ''')
+
+
+def get_tasks(cat_diff: tuple, selected_data=[]):
+    category, difficulty = cat_diff[0], cat_diff[1]
+    if cat_diff in selected_data:
+        cur.execute("""
+            SELECT name
+            FROM selected_tasks
+            WHERE category = %s AND difficulty=%s
+        """, (category, difficulty))
+        tasks = cur.fetchall()
+        return tasks
+    selected_data.append(cat_diff)
+
+    cur.execute("""
+        SELECT name
+        FROM selected_tasks
+        """)
+    selected_tasks = cur.fetchall()
+    data = get_tasks_by_category_and_difficulty(category, difficulty)
+    for task in data:
+        if task[0] in selected_tasks:
+            data.remove(task)
+    cur.execute("""
+            SELECT name, number
+            FROM tasks
+            WHERE category @> %s AND difficulty=%s
+            ORDER BY resolved DESC
+            OFFSET 10 LIMIT 10;
+        """, ([category], difficulty))
+    new_list = cur.fetchall()
+    for task in new_list:
+        if len(data) == 10:
+            break
+        if task[0] in selected_tasks:
+            continue
+        data.append(task)
+
+    for task in data:
+        task_name = task[1]
+        link = task[-1]
+        if task_name not in selected_tasks:
+            cur.execute('''INSERT INTO selected_tasks
+                            VALUES(%s, %s, %s, %s);''',
+                        (task_name, category,
+                            difficulty, link))
+    connection.commit()
+    return data
 
 
 def get_tasks_by_category_and_difficulty(category: str, difficulty: int) -> list:
@@ -64,10 +114,10 @@ def get_tasks_by_category_and_difficulty(category: str, difficulty: int) -> list
     cur.execute("""
         SELECT *
         FROM tasks
-        WHERE category=%s AND difficulty=%s
+        WHERE category @> %s AND difficulty=%s
         ORDER BY resolved DESC
         LIMIT 10;""",
-                (category, difficulty))
+                ([category], difficulty))
     logging.info(
         f'Получили задачи по выбранным параметрам: {category} {difficulty}'
     )
@@ -151,7 +201,7 @@ def get_difficulty(update, _):
     logging.info('Успешный выбор категории')
     for button_name in difficulty_button:
         keyboard.append([InlineKeyboardButton(
-            button_name, callback_data=f'Выбор_{category}_{button_name}'
+            button_name, callback_data=f'выбор_{category}_{button_name}'
             )])
     query.answer(f"Выбранный вариант: {category}")
     query.edit_message_text(
@@ -169,9 +219,9 @@ def get_tasks_list(update, context):
     logging.info('Успешный выбор сложности')
     chat = update.effective_chat
     data = [(task[1], task[5]) for task in
-            get_tasks_by_category_and_difficulty(
-            category_button.get(category),
-            difficulty_button.get(difficulty))]
+            get_tasks([
+                category_button.get(category),
+                difficulty_button.get(difficulty)])]
     if len(data) > 0:
         for i in data:
             context.bot.send_message(
@@ -185,6 +235,23 @@ def get_tasks_list(update, context):
                 text='В базе отсутствуют задачи по выбранным параметрам'
             )
         logging.warning('В базе отсутствуют задачи по выбранным параметрам')
+
+
+def main():
+
+    create_selected_task_table()
+
+    updater = Updater(token=TOKEN)
+    handler = updater.dispatcher.add_handler
+
+    handler(CommandHandler('start', start))
+    handler(CommandHandler('newtask', new_task))
+    handler(MessageHandler(Filters.text, find_task))
+    handler(CallbackQueryHandler(get_difficulty, pattern='Тема'))
+    handler(CallbackQueryHandler(get_tasks_list, pattern='Выбор'))
+
+    updater.start_polling()
+    updater.idle()
 
 
 if __name__ == '__main__':
@@ -201,16 +268,6 @@ if __name__ == '__main__':
     except (Exception, psycopg2.Error) as error:
         logging.error('Ошибка при подключении к PostgreSQL', error)
 
-    updater = Updater(token=TOKEN)
-    handler = updater.dispatcher.add_handler
-
-    handler(CommandHandler('start', start))
-    handler(CommandHandler('newtask', new_task))
-    handler(MessageHandler(Filters.text, find_task))
-    handler(CallbackQueryHandler(get_difficulty, pattern='Тема'))
-    handler(CallbackQueryHandler(get_tasks_list, pattern='Выбор'))
-
-    updater.start_polling()
-    updater.idle()
+    main()
 
     connection.close()
