@@ -164,7 +164,7 @@ def get_difficulty(update, _):
     )
 
 
-def get_tasks_list(update, context):
+def send_tasks_list(update, context):
     """Отправка в чат подборки задач: наименование и ссылка на задачу"""
     query = update.callback_query
     category = query.data.split('_')[1]
@@ -173,7 +173,7 @@ def get_tasks_list(update, context):
     logging.info('Успешный выбор сложности')
     chat = update.effective_chat
     data = [(task[1], task[5]) for task in
-            get_tasks([
+            tasks_selection([
                 category_button.get(category),
                 difficulty_button.get(difficulty)])]
     if len(data) > 0:
@@ -191,7 +191,7 @@ def get_tasks_list(update, context):
         logging.warning('В базе отсутствуют задачи по выбранным параметрам')
 
 
-def get_tasks(cat_diff: tuple, selected_data=[]):
+def tasks_selection(cat_diff: tuple, selected_data=[]):
     """Получение подборки задач:
     на вход принимается кортеж из категории и сложности.
     """
@@ -262,7 +262,7 @@ def main():
     handler(CommandHandler('newtask', new_task))
     handler(MessageHandler(Filters.text, find_task))
     handler(CallbackQueryHandler(get_difficulty, pattern='Тема'))
-    handler(CallbackQueryHandler(get_tasks_list, pattern='Выбор'))
+    handler(CallbackQueryHandler(send_tasks_list, pattern='Выбор'))
 
     updater.start_polling()
     updater.idle()
