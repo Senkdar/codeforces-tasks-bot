@@ -50,70 +50,17 @@ difficulty_button = {
 
 def create_selected_task_table():
     """Создание таблицы использованных задач в базе данных."""
-    # cur.execute('DROP TABLE selected_tasks')
     cur.execute('''
     CREATE TABLE IF NOT EXISTS selected_tasks(
+        number TEXT,
         name TEXT,
         category TEXT,
         difficulty INTEGER,
+        resolved TEXT,
         link TEXT
     );
     ''')
-
-
-def get_tasks(cat_diff: tuple, selected_data=[]):
-    """Получение подборки задач: на вход принимается кортеж
-    из категории и сложности. Если указанные критерии были использованы,
-    то получаем подборку из полученных ранее задач. Если запрашиваем такие 
-    критерии впервые: получаем список из 10 задач, проверяем, что задачи
-    из ранее не использовались в подборке другой категории, добавляем новые
-    задачи в таблицу выбранных задач.
-    """
-    category, difficulty = cat_diff[0], cat_diff[1]
-    if cat_diff in selected_data:
-        cur.execute("""
-            SELECT name
-            FROM selected_tasks
-            WHERE category = %s AND difficulty=%s
-        """, (category, difficulty))
-        tasks = cur.fetchall()
-        return tasks
-    selected_data.append(cat_diff)
-
-    cur.execute("""
-        SELECT name
-        FROM selected_tasks
-        """)
-    selected_tasks = cur.fetchall()
-    data = get_tasks_by_category_and_difficulty(category, difficulty)
-    for task in data:
-        if task[0] in selected_tasks:
-            data.remove(task)
-    cur.execute("""
-            SELECT name, number
-            FROM tasks
-            WHERE category @> %s AND difficulty=%s
-            ORDER BY resolved DESC
-            OFFSET 10 LIMIT 10;
-        """, ([category], difficulty))
-    new_list = cur.fetchall()
-    for task in new_list:
-        if len(data) == 10:
-            break
-        if task[0] in selected_tasks:
-            continue
-        data.append(task)
-
-    for task in data:
-        task_name = task[1]
-        link = task[-1]
-        if task_name not in selected_tasks:
-            cur.execute('''INSERT INTO selected_tasks
-                            VALUES(%s, %s, %s, %s);''',
-                        (task_name, category,
-                            difficulty, link))
     connection.commit()
-    return data
 
 
 def get_tasks_by_category_and_difficulty(category: str, difficulty: int) -> list:
@@ -161,7 +108,7 @@ def start(update, context):
 
 
 def find_task(update, context):
-    """Поиск по номеру задачи"""
+    """Поиск по номеру задачи."""
     chat = update.effective_chat
     number = update.message.text
     data = get_task_by_number(number)
@@ -186,7 +133,7 @@ def find_task(update, context):
 
 
 def new_task(update, context):
-    """Отображение кнопок для выбора темы"""
+    """Отображение кнопок для выбора темы."""
     keyboard = []
     for button_name in category_button:
         keyboard.append([InlineKeyboardButton(
@@ -208,9 +155,9 @@ def get_difficulty(update, _):
     logging.info('Успешный выбор категории')
     for button_name in difficulty_button:
         keyboard.append([InlineKeyboardButton(
-            button_name, callback_data=f'выбор_{category}_{button_name}'
+            button_name, callback_data=f'Выбор_{category}_{button_name}'
             )])
-    query.answer(f"Выбранный вариант: {category}")
+    query.answer(f"Выбранный вариант: {category},")
     query.edit_message_text(
         text='Выберите сложность:',
         reply_markup=InlineKeyboardMarkup(keyboard)
@@ -218,7 +165,7 @@ def get_difficulty(update, _):
 
 
 def get_tasks_list(update, context):
-    """Получение 10 задач: наименование и ссылка на задачу"""
+    """Отправка в чат подборки задач: наименование и ссылка на задачу"""
     query = update.callback_query
     category = query.data.split('_')[1]
     difficulty = query.data.split('_')[2]
@@ -244,21 +191,59 @@ def get_tasks_list(update, context):
         logging.warning('В базе отсутствуют задачи по выбранным параметрам')
 
 
-def main():
+def get_tasks(cat_diff: tuple, selected_data=[]):
+    """Получение подборки задач: на вход принимается кортеж
+    из категории и сложности. Если указанные критерии были использованы,
+    то получаем подборку из полученных ранее задач. Если запрашиваем такие
+    критерии впервые: получаем список из 10 задач, проверяем, что задачи
+    ранее не использовались в подборке другой категории, добавляем новые
+    задачи в таблицу выбранных задач.
+    """
+    category, difficulty = cat_diff[0], cat_diff[1]
+    if cat_diff in selected_data:
+        cur.execute("""
+            SELECT *
+            FROM selected_tasks
+            WHERE category = %s AND difficulty=%s
+        """, (category, difficulty))
+        tasks = cur.fetchall()
+        return tasks
+    selected_data.append(cat_diff)
 
-    create_selected_task_table()
+    cur.execute("""
+        SELECT name
+        FROM selected_tasks
+        """)
+    selected_tasks = cur.fetchall()
 
-    updater = Updater(token=TOKEN)
-    handler = updater.dispatcher.add_handler
+    data = get_tasks_by_category_and_difficulty(category, difficulty)
+    for task in data:
+        if task[1] in selected_tasks:
+            data.remove(task)
 
-    handler(CommandHandler('start', start))
-    handler(CommandHandler('newtask', new_task))
-    handler(MessageHandler(Filters.text, find_task))
-    handler(CallbackQueryHandler(get_difficulty, pattern='Тема'))
-    handler(CallbackQueryHandler(get_tasks_list, pattern='Выбор'))
-
-    updater.start_polling()
-    updater.idle()
+    cur.execute("""
+            SELECT *
+            FROM tasks
+            WHERE category @> %s AND difficulty=%s
+            ORDER BY resolved DESC
+            OFFSET 10 LIMIT 10;
+        """, ([category], difficulty))
+    new_list = cur.fetchall()
+    for task in new_list:
+        if len(data) == 10:
+            break
+        if task[0] in selected_tasks:
+            continue
+        data.append(task)
+    for task in data:
+        task_name = task[1]
+        link = task[-1]
+        if task_name not in selected_tasks:
+            cur.execute('''INSERT INTO selected_tasks
+                            VALUES(%s, %s, %s, %s, %s, %s);''',
+                        (task[0], task[1], category, difficulty, task[4], task[5]))
+    connection.commit()
+    return data
 
 
 if __name__ == '__main__':
@@ -275,6 +260,21 @@ if __name__ == '__main__':
     except (Exception, psycopg2.Error) as error:
         logging.error('Ошибка при подключении к PostgreSQL', error)
 
-    main()
+    create_selected_task_table()
+
+    updater = Updater(token=TOKEN)
+    handler = updater.dispatcher.add_handler
+
+    handler(CommandHandler('start', start))
+    handler(CommandHandler('newtask', new_task))
+    handler(MessageHandler(Filters.text, find_task))
+    handler(CallbackQueryHandler(get_difficulty, pattern='Тема'))
+    handler(CallbackQueryHandler(get_tasks_list, pattern='Выбор'))
+
+    updater.start_polling()
+    updater.idle()
+
+    cur.execute('DELETE FROM selected_tasks')
+    connection.commit()
 
     connection.close()

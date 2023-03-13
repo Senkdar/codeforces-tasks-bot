@@ -44,10 +44,8 @@ def parse_page(url: str) -> None:
             continue
         raw_data = task.get_text(strip=True, separator='|')
         data = raw_data.split('|')
-        print(data)
         task_id = data.pop(0)
         task_name = data.pop(0)
-        print(task_name)
         task_resolved = data.pop(-1)
         # не у всех задач есть сложность
         # если её нет - пропускаем задачу
@@ -75,8 +73,9 @@ def parse_page(url: str) -> None:
                 'WHERE name=%s;',
                 (task_resolved, task_name)
             )
+        # c+=1 
+        # if c>3: break
         connection.commit()
-
 
 
 def parse_all_pages() -> None:
@@ -102,7 +101,7 @@ if __name__ == '__main__':
     except (Exception, psycopg2.Error) as error:
         logging.error('Ошибка при подключении к PostgreSQL', error)
 
-    # create__task_table()
+    create__task_table()
     # while True:
     # parse_all_pages()
     #     logging.info('Остановка программы на 1 час')
