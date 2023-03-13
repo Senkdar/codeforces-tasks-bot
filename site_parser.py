@@ -99,7 +99,6 @@ if __name__ == '__main__':
         logging.error('Ошибка при подключении к PostgreSQL', error)
 
     create__task_table()
-
     while True:
         parse_all_pages()
         logging.info('Остановка программы на 1 час')
