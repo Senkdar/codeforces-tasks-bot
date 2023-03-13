@@ -102,8 +102,8 @@ if __name__ == '__main__':
         logging.error('Ошибка при подключении к PostgreSQL', error)
 
     create__task_table()
-    # while True:
-    # parse_all_pages()
-    #     logging.info('Остановка программы на 1 час')
-    #     time.sleep(RETRY_TIME)
+    while True:
+        parse_all_pages()
+        logging.info('Остановка программы на 1 час')
+        time.sleep(RETRY_TIME)
     parse_page('https://codeforces.com/problemset/page/1?order=BY_SOLVED_DESC')
