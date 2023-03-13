@@ -37,7 +37,6 @@ def parse_page(url: str) -> None:
     page = requests.get(url).content
     soup = BeautifulSoup(page, 'html.parser')
     tasks = soup.find_all('tr')
-    c = 0
 
     for task in tasks:
         if task.find('td') is None:
@@ -73,8 +72,6 @@ def parse_page(url: str) -> None:
                 'WHERE name=%s;',
                 (task_resolved, task_name)
             )
-        # c+=1 
-        # if c>3: break
         connection.commit()
 
 
@@ -102,8 +99,7 @@ if __name__ == '__main__':
         logging.error('Ошибка при подключении к PostgreSQL', error)
 
     create__task_table()
-    # while True:
-    # parse_all_pages()
-    #     logging.info('Остановка программы на 1 час')
-    #     time.sleep(RETRY_TIME)
-    parse_page('https://codeforces.com/problemset/page/1?order=BY_SOLVED_DESC')
+    while True:
+        parse_all_pages()
+        logging.info('Остановка программы на 1 час')
+        time.sleep(RETRY_TIME)

@@ -177,10 +177,10 @@ def get_tasks_list(update, context):
                 category_button.get(category),
                 difficulty_button.get(difficulty)])]
     if len(data) > 0:
-        for i in data:
+        for task in data:
             context.bot.send_message(
                 chat_id=chat.id,
-                text=i
+                text=task
             )
         logging.info('Успешно отправлена выборка задач')
     else:
@@ -193,8 +193,8 @@ def get_tasks_list(update, context):
 
 def get_tasks(cat_diff: tuple, selected_data=[]):
     """Получение подборки задач: на вход принимается кортеж
-    из категории и сложности. Если указанные критерии были использованы,
-    то получаем подборку из полученных ранее задач. Если запрашиваем такие
+    из категории и сложности. Если указанные критерии были запрошены повторно:
+    выводим подборку из полученных ранее задач. Если запрашиваем такие
     критерии впервые: получаем список из 10 задач, проверяем, что задачи
     ранее не использовались в подборке другой категории, добавляем новые
     задачи в таблицу выбранных задач.
@@ -221,27 +221,32 @@ def get_tasks(cat_diff: tuple, selected_data=[]):
         if task[1] in selected_tasks:
             data.remove(task)
 
-    cur.execute("""
-            SELECT *
-            FROM tasks
-            WHERE category @> %s AND difficulty=%s
-            ORDER BY resolved DESC
-            OFFSET 10 LIMIT 10;
-        """, ([category], difficulty))
-    new_list = cur.fetchall()
-    for task in new_list:
-        if len(data) == 10:
-            break
-        if task[0] in selected_tasks:
-            continue
-        data.append(task)
+    if len(data) != 10:
+        cur.execute("""
+                SELECT *
+                FROM tasks
+                WHERE category @> %s AND difficulty=%s
+                ORDER BY resolved DESC
+                OFFSET 10 LIMIT 10;
+            """, ([category], difficulty))
+        new_list = cur.fetchall()
+        for task in new_list:
+            if len(data) == 10:
+                break
+            if task[1] in selected_tasks:
+                continue
+            data.append(task)
+
     for task in data:
+        number = task[0]
         task_name = task[1]
-        link = task[-1]
+        resolved = task[4]
+        link = task[5]
         if task_name not in selected_tasks:
             cur.execute('''INSERT INTO selected_tasks
                             VALUES(%s, %s, %s, %s, %s, %s);''',
-                        (task[0], task[1], category, difficulty, task[4], task[5]))
+                        (number, task_name, category,
+                         difficulty, resolved, link))
     connection.commit()
     return data
 
