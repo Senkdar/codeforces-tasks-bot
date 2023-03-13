@@ -24,15 +24,15 @@ load_dotenv()
 TOKEN = os.getenv('TOKEN')
 
 category_button = {
-    'Математика': 'math',
-    'Перебор': 'brute force',
-    'Cтроки': 'strings',
-    'Реализация': 'implementation',
-    'Жадные алгоритмы': 'greedy',
-    'Бинарный поиск': 'binary search',
-    'Конструктивные алгоритмы': 'constructive algorithms',
-    'Сортировки': 'sortings',
-    'Структуры данных': 'data structures',
+    'Математика': 'математика',
+    'Перебор': 'перебор',
+    'Cтроки': 'строки',
+    'Реализация': 'реализация',
+    'Жадные алгоритмы': 'жадные алгортимы',
+    'Бинарный поиск': 'бинарный поиск',
+    'Конструктивные алгоритмы': 'конструктивные алгоритмы',
+    'Сортировки': 'сортировки',
+    'Структуры данных': 'структуры данных',
 }
 
 difficulty_button = {
@@ -177,10 +177,10 @@ def get_tasks_list(update, context):
                 category_button.get(category),
                 difficulty_button.get(difficulty)])]
     if len(data) > 0:
-        for task in data:
-            context.bot.send_message(
-                chat_id=chat.id,
-                text=task
+        message = '\n'.join([f'{title}\n{link}' for title, link in data])
+        context.bot.send_message(
+            chat_id=chat.id,
+            text=str(message)
             )
         logging.info('Успешно отправлена выборка задач')
     else:
@@ -192,14 +192,12 @@ def get_tasks_list(update, context):
 
 
 def get_tasks(cat_diff: tuple, selected_data=[]):
-    """Получение подборки задач: на вход принимается кортеж
-    из категории и сложности. Если указанные критерии были запрошены повторно:
-    выводим подборку из полученных ранее задач. Если запрашиваем такие
-    критерии впервые: получаем список из 10 задач, проверяем, что задачи
-    ранее не использовались в подборке другой категории, добавляем новые
-    задачи в таблицу выбранных задач.
+    """Получение подборки задач:
+    на вход принимается кортеж из категории и сложности.
     """
     category, difficulty = cat_diff[0], cat_diff[1]
+    # Если указанные критерии были запрошены повторно,
+    # выводим подборку из полученных ранее задач.
     if cat_diff in selected_data:
         cur.execute("""
             SELECT *
@@ -214,13 +212,17 @@ def get_tasks(cat_diff: tuple, selected_data=[]):
         SELECT name
         FROM selected_tasks
         """)
-    selected_tasks = cur.fetchall()
+    selected_tasks = [name for (name,) in cur.fetchall()]
 
     data = get_tasks_by_category_and_difficulty(category, difficulty)
+    # проверяем, есть ли полученные задачи в таблице selected_tasks,
+    # если есть, значит они были использованы в подборке другой категории,
+    # удаляем их из полученных данных.
     for task in data:
         if task[1] in selected_tasks:
             data.remove(task)
-
+    # при недостатке выводимых данных, делаем запрос к таблице,
+    # смещая выборку, добавляем полученные задачи в список.
     if len(data) != 10:
         cur.execute("""
                 SELECT *
@@ -236,7 +238,7 @@ def get_tasks(cat_diff: tuple, selected_data=[]):
             if task[1] in selected_tasks:
                 continue
             data.append(task)
-
+    # добавляем полученные задачи в список уже выбранных задач.
     for task in data:
         number = task[0]
         task_name = task[1]
@@ -249,6 +251,21 @@ def get_tasks(cat_diff: tuple, selected_data=[]):
                          difficulty, resolved, link))
     connection.commit()
     return data
+
+
+def main():
+
+    updater = Updater(token=TOKEN)
+    handler = updater.dispatcher.add_handler
+
+    handler(CommandHandler('start', start))
+    handler(CommandHandler('newtask', new_task))
+    handler(MessageHandler(Filters.text, find_task))
+    handler(CallbackQueryHandler(get_difficulty, pattern='Тема'))
+    handler(CallbackQueryHandler(get_tasks_list, pattern='Выбор'))
+
+    updater.start_polling()
+    updater.idle()
 
 
 if __name__ == '__main__':
@@ -266,18 +283,7 @@ if __name__ == '__main__':
         logging.error('Ошибка при подключении к PostgreSQL', error)
 
     create_selected_task_table()
-
-    updater = Updater(token=TOKEN)
-    handler = updater.dispatcher.add_handler
-
-    handler(CommandHandler('start', start))
-    handler(CommandHandler('newtask', new_task))
-    handler(MessageHandler(Filters.text, find_task))
-    handler(CallbackQueryHandler(get_difficulty, pattern='Тема'))
-    handler(CallbackQueryHandler(get_tasks_list, pattern='Выбор'))
-
-    updater.start_polling()
-    updater.idle()
+    main()
 
     cur.execute('DELETE FROM selected_tasks')
     connection.commit()

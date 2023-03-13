@@ -77,9 +77,9 @@ def parse_page(url: str) -> None:
 
 def parse_all_pages() -> None:
     """Функция для парсинга всех страниц"""
-    for i in range(1, 15):
+    for i in range(1, 30):
         # по умолчанию, страниц меньше, чем на Codeforces
-        url = f'https://codeforces.com/problemset/page/{i}?order=BY_SOLVED_DESC'
+        url = f'https://codeforces.com/problemset/page/{i}?order=BY_SOLVED_DESC&locale=ru'
         parse_page(url)
         logging.info(f'Получили данные со страницы {i}')
 
