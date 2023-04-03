@@ -165,7 +165,7 @@ def get_difficulty(update, _):
 
 
 def send_tasks_list(update, context):
-    """Отправка в чат подборки задач: наименование и ссылка на задачу"""
+    """Отправка в чат подборки задач: наименование и ссылка на задачу."""
     query = update.callback_query
     category = query.data.split('_')[1]
     difficulty = query.data.split('_')[2]
