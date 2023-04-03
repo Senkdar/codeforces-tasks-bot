@@ -1,0 +1,24 @@
+version: '3.3'
+
+services:
+
+  db:
+    image: postgres:13.0-alpine
+    volumes:
+      - tasks_database:/var/lib/postgresql/data/
+    env_file:
+      - ../backend/.env
+
+  backend:
+    build: ../backend
+    restart: always
+    ports:
+     - "8000:8000"
+    depends_on:
+      - db
+    env_file:
+      - ../backend/.env
+
+volumes:
+  tasks_database:
+
